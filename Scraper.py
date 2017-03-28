@@ -20,6 +20,7 @@ class Scraper(object):
 
         """store the visited pages"""
         self.visited = set()
+        self.contain = set()
 
         """by Crawler's extension result queue"""
         self.result_urls_queue = Queue()
@@ -31,26 +32,12 @@ class Scraper(object):
         """
         self.task_queue = Queue()
 
-        self.single_page = single_page
-        if self.single_page is False:
-            self.__init_workers()
-        else:
-            self.__init_single_worker()
-
-    def __check_single_page(self):
-        if self.single_page is True:
-            raise Exception('[!]Single page won\'t allow you use many workers')
+        self.__init_workers()
 
     """
     init worker(s)
     """
-    def __init_single_worker(self):
-        ret = threading.Thread(target=self._single_worker)
-        ret.start()
-
     def __init_workers(self):
-        self.__check_single_page()
-
         for _ in range(self.workers_num):
             ret = threading.Thread(target=self._worker)
             ret.start()
@@ -63,42 +50,6 @@ class Scraper(object):
         """返回元素队列"""
         return self.result_elements_queue
     
-    def _single_worker(self):
-        """worker function"""
-        if self.all_dead is not False:
-            self.all_dead = False
-        
-        crawler = None
-        while not self.all_dead:
-            try:
-                url = self.task_queue.get(block=True)
-                print('Working', url)
-                try:
-                    if url[:url.index('#')] in self.visited:
-                        continue
-                except:
-                    pass
-
-                if url in self.visited:
-                    continue
-                else:
-                    pass
-                
-                self.count += 1
-                print('Having process', self.count, 'Pages')
-                crawler = self.worker_class(url)
-                self.visited.add(url)
-                result_url = crawler.execute()
-
-                for url in result_url:
-                    if url not in self.visited:
-                        self.task_queue.put(url)
-                        self.result_urls_queue.put(url)
-            except:
-                pass
-            finally:
-                pass
-    
     def _worker(self):
         if self.all_dead is not False:
             self.all_dead = False
@@ -108,28 +59,29 @@ class Scraper(object):
             try:
                 #block=True,队列可中断，用于多线程
                 url = self.task_queue.get(block=True)
+                #if url in self.contain:
+                #    self.contain.pop()
                 print('Working', url)
-                try:
-                    if url[:url.index('#')] in self.visited:
-                        continue
-                except:
-                    pass
-
+                print('Task len', self.task_queue.qsize())
+                print('result len', self.result_urls_queue.qsize())
+                #check url has used?
                 if url in self.visited:
                     continue
-                else:
-                    pass
                 
                 self.count += 1
                 print('Having process', self.count, 'Pages')
-                crawler = self.worker_class(url)
                 self.visited.add(url)
+                crawler = self.worker_class(url)
                 result_url = crawler.execute()
 
                 for url in result_url:
-                    if url not in self.visited:
+                    if url not in self.visited and url not in self.contain:
                         self.task_queue.put(url)
                         self.result_urls_queue.put(url)
+                        self.contain.add(url)
+                #释放变量、释放内存
+                del result_url
+                del crawler
             except:
                 pass
             finally:
@@ -145,12 +97,7 @@ class Scraper(object):
     
     def feed(self, target_urls):
         """一开始的url初始化"""
-        if isinstance(target_urls, list):
-            for target in target_urls:
-                self.task_queue.put(target)
-        elif isinstance(target_urls, str):
-            self.task_queue.put(target_urls)
-        else:
-            pass
+        for target in target_urls:
+            self.task_queue.put(target)
 
     

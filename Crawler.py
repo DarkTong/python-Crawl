@@ -43,18 +43,23 @@ class Crawler(object):
             url_lists = []
             all_tags = self.soup.findAll(name='a')
             scheme_mode = re.compile('^https?')
+            suffix_mode = re.compile('\.\w+$')
             for tag in all_tags:
                 #scheme, netloc, path 三者的情况 -》 6种
                 par = urlparse(tag['href'])
                 tmp = ""
+                tmp_url = ""
                 if par.path != "" and par.path[0] != '/':
                     tmp = '/'
                 #https/http开头的
                 if par.scheme == "" and par.netloc == "" and par.path != "":
-                    url_lists.append(self.scheme+'://'+self.netloc+tmp+par.path)
+                    tmp_url = self.scheme+'://'+self.netloc+tmp+par.path
                 elif par.scheme != "" and par.netloc != "" and par.path != "":
                     if re.match(scheme_mode, par.scheme) is not None:
-                        url_lists.append(par.scheme+'://'+par.netloc+tmp+par.path)
+                        tmp_url = par.scheme+'://'+par.netloc+tmp+par.path
+                #检查URL是否是否有后缀名
+                if re.match(suffix_mode, tmp_url) is None:
+                    url_lists.append(tmp_url)
                 #待补充
             return url_lists
 
