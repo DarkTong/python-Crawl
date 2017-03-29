@@ -3,6 +3,7 @@
 from queue import Queue
 import threading
 from Crawler import Crawler
+import time
 
 class Scraper(object):
     """
@@ -17,6 +18,9 @@ class Scraper(object):
 
         """check if the workers is die"""
         self.all_dead = False
+
+        """ 检查结果队列正在输出 """
+        self.is_outputing = False
 
         """store the visited pages"""
         self.visited = set()
@@ -41,6 +45,7 @@ class Scraper(object):
         for _ in range(self.workers_num):
             ret = threading.Thread(target=self._worker)
             ret.start()
+        threading.Thread(target=self.Check()).start()
 
     def get_result_urls_queue(self):
         """返回结果队列"""
@@ -76,6 +81,7 @@ class Scraper(object):
 
                 for url in result_url:
                     if url not in self.visited and url not in self.contain:
+                        while self.is_outputing is True: pass
                         self.task_queue.put(url)
                         self.result_urls_queue.put(url)
                         self.contain.add(url)
@@ -87,6 +93,23 @@ class Scraper(object):
             finally:
                 pass
 
+    """ 检查结果队列 """
+    def Check(self):
+        while self.all_dead:
+            if self.result_urls_queue.qsize() > 5000:
+                self.is_outputing = True
+                with open('scraper.site', 'a') as File:
+                    while self.result_urls_queue.empty() is False:
+                        item = self.result_urls_queue.get()
+                        File.write(str(item) + '\n')
+                self.is_outputing = False
+                # 判断是否已经搜索完毕
+                cnt = 0
+                while self.task_queue.empty() and cnt <= 5:
+                    cnt += 1
+                    time.sleep(5)
+                if cnt == 5:
+                    self.kill_workers()
     """
     scraper interface
     """

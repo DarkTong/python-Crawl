@@ -58,7 +58,8 @@ class Crawler(object):
                     if re.match(scheme_mode, par.scheme) is not None:
                         tmp_url = par.scheme+'://'+par.netloc+tmp+par.path
                 #检查URL是否是否有后缀名
-                if re.match(suffix_mode, tmp_url) is None:
+                if re.match(suffix_mode, tmp_url) is None \
+                    or re.findall(suffix_mode, tmp_url)[0] in '.html':
                     url_lists.append(tmp_url)
                 #待补充
             return url_lists
